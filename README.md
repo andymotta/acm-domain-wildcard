@@ -1,30 +1,63 @@
 ## Usage
 
-Create a wildcard in ACM for the domain that we own in the route53 account for ghost ingress
+Create a wildcard in ACM for the domain that we own
+```hcl
+data "aws_route53_zone" "externaldns_link" {
+  name         = "${var.domain_name}."
+}
+
+module "acm_domain_wildcard" {
+  source = "github.com/andymotta/acm-domain-wildcard"
+  domain_name = var.domain_name
+  zone_id = data.aws_route53_zone.externaldns_link.zone_id
+}
+```
+If DNS is in a different AWS account:
 ```hcl
 data "aws_route53_zone" "externaldns_link" {
   provider     = aws.dns
   name         = "${var.domain_name}."
 }
 
+provider "aws" {
+  region = "us-west-2"
+  profile = "default"
+}
+
+provider "aws" {
+  alias = "dns"
+  region = "us-west-2"
+  profile = "awsacct2"
+}
+
 module "acm_domain_wildcard" {
-  source = "./modules/acm-domain-wildcard"
+  providers = {
+    aws.dns = aws.dns
+  }
+  source = "github.com/andymotta/acm-domain-wildcard"
   domain_name = var.domain_name
   zone_id = data.aws_route53_zone.externaldns_link.zone_id
 }
 ```
+
 Then apply to Helm chart
 ```hcl
-resource "helm_release" "ghost" {
-  name       = "ghost"
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "ghost"
+resource "helm_release" "chart" {
+  name       = "release"
+  repository = "repo"
+  chart      = "chart"
   values = [
-    templatefile("ghost-values.yaml", {
-      certificate_arn = module.acm_domain_wildcard.certificate_arn
+    templatefile("${path.module}/chart-values.yaml", {
+      certificate_arn = var.certificate_arn
     })
   ]
 }
+```
+```yaml
+grafana:
+  ingress:
+    annotations:
+      alb.ingress.kubernetes.io/certificate-arn: ${certificate_arn}
 ```
 
 
