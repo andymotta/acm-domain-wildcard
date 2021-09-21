@@ -1,18 +1,6 @@
 ## Usage
 
-Create a wildcard in ACM for the domain that we own
-```hcl
-data "aws_route53_zone" "externaldns_link" {
-  name         = "${var.domain_name}."
-}
-
-module "acm_domain_wildcard" {
-  source = "github.com/andymotta/acm-domain-wildcard"
-  domain_name = var.domain_name
-  zone_id = data.aws_route53_zone.externaldns_link.zone_id
-}
-```
-If DNS is in a different AWS account:
+Create a wildcard in ACM for the domain that we own and DNS is in a different AWS account:
 ```hcl
 data "aws_route53_zone" "externaldns_link" {
   provider     = aws.dns
